@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import socket
 import time
+from multiprocessing import Process
 
 #define address & buffer size
 HOST = ""
@@ -41,9 +42,9 @@ def send_data(serversocket, payload):
     print("Payload sent successfully")
 
 def main():
-    proxy_host = 'www.google.com'
-    proxy_port = 80
-    higher_buffer_size = 4096   #added
+    proxy_host = 'www.google.com'   #moved to inside echo_handeler
+    proxy_port = 80                 #moved to inside echo_handeler
+    #higher_buffer_size = 4096      #added, moved inside echo_handeler
 
     #s is for server and client
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -61,35 +62,77 @@ def main():
             conn, addr = s.accept()
             print("Connected by", addr)
             
-            #create a new socket, proxy_socket for google
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as proxy_socket:
+            # #create a new socket, proxy_socket for google
+            # with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as proxy_socket:
 
 
-                #recieve data, wait a bit, then send it back
-                full_data = conn.recv(BUFFER_SIZE)
-                time.sleep(0.5)
+            #     #recieve data, wait a bit, then send it back
+            #     full_data = conn.recv(BUFFER_SIZE)
+            #     time.sleep(0.5)
 
-                #send the requst to google
-                google_ip = get_remote_ip(proxy_host)
-                proxy_socket.connect((google_ip , proxy_port))
-                print (f'Socket Connected to {proxy_host} on ip {google_ip}')
+            #     #send the requst to google
+            #     google_ip = get_remote_ip(proxy_host)
+            #     proxy_socket.connect((google_ip , proxy_port))
+            #     print (f'Socket Connected to {proxy_host} on ip {google_ip}')
 
-                #send the data and shutdown
-                send_data(proxy_socket, full_data.decode("utf-8")) #full_data is in bytes, convert it
-                proxy_socket.shutdown(socket.SHUT_WR)
+            #     #send the data and shutdown
+            #     send_data(proxy_socket, full_data.decode("utf-8")) #full_data is in bytes, convert it
+            #     proxy_socket.shutdown(socket.SHUT_WR)
 
-                #continue accepting data until no more left
+            #     #continue accepting data until no more left
                 
-                response_data = b"" #byte string type
+            #     response_data = b"" #byte string type
 
-                while True:
-                    data = proxy_socket.recv(higher_buffer_size)
-                    if not data:
-                        break
-                    response_data += data
+            #     while True:
+            #         data = proxy_socket.recv(higher_buffer_size)
+            #         if not data:
+            #             break
+            #         response_data += data
                 
-                conn.sendall(response_data) #send all data to the client
-                conn.close()
+            #     conn.sendall(response_data) #send all data to the client
+
+
+            #make the processes
+            p = Process(target = echo_handler, args=(conn, addr))
+            p.start()
+            conn.close()
+
+
+def echo_handler(conn, addr):
+
+    proxy_host = 'www.google.com'
+    proxy_port = 80
+    higher_buffer_size = 4096   #added
+
+    #create a new socket, proxy_socket for google
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as proxy_socket:
+
+
+        #recieve data, wait a bit, then send it back
+        full_data = conn.recv(BUFFER_SIZE)
+        time.sleep(0.5)
+
+        #send the requst to google
+        google_ip = get_remote_ip(proxy_host)
+        proxy_socket.connect((google_ip , proxy_port))
+        print (f'Socket Connected to {proxy_host} on ip {google_ip}')
+
+        #send the data and shutdown
+        send_data(proxy_socket, full_data.decode("utf-8")) #full_data is in bytes, convert it
+        proxy_socket.shutdown(socket.SHUT_WR)
+
+        #continue accepting data until no more left
+        
+        response_data = b"" #byte string type
+
+        while True:
+            data = proxy_socket.recv(higher_buffer_size)
+            if not data:
+                break
+            response_data += data
+        
+        conn.sendall(response_data) #send all data to the client
+        conn.close()
 
 if __name__ == "__main__":
     main()

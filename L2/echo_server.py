@@ -2,7 +2,7 @@
 from operator import truediv
 import socket
 import time
-from multiprocessing import process
+from multiprocessing import Process
 
 
 #define address & buffer size
@@ -26,10 +26,11 @@ def main():
             conn, addr = s.accept()
             print("Connected by", addr)
 
-        #create process here
-        p = Process(target=echo_handler, args=(conn,addr))
-        p.deamon = true
-        p.start()
+            #create process here
+            p = Process(target=echo_handler, args=(conn,addr))
+            p.deamon = True
+            p.start()
+            conn.close()
 
 def echo_handler(conn, addr):
     #recieve data, wait a bit, then send it back
